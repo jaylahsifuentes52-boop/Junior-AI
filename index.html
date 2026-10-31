@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Junior AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo">J</div>
+            <div>
+                <h2>Junior AI</h2>
+                <p>Your AI workspace</p>
+            </div>
+        </div>
+
+        <button class="new-chat" id="newChatBtn">
+            ＋ New conversation
+        </button>
+
+        <h4>RECENT CHATS</h4>
+        <div id="chatList"></div>
+
+        <div class="sidebar-footer">
+            <span class="green-dot"></span>
+            Ready to help
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <header class="topbar">
+            <button id="homeBtn">⌂ Home</button>
+            <span>✦ Junior AI Assistant</span>
+        </header>
+
+        <section class="workspace">
+
+            <div class="welcome" id="welcome">
+
+                <div class="big-logo">✦</div>
+
+                <h1>What's on your <span>mind?</span></h1>
+
+                <p>
+                    Welcome to Junior AI. Ask a question,
+                    build a project, or fix your code.
+                </p>
+
+                <div class="cards">
+
+                    <button class="card" data-prompt="Help me build a website.">
+                        💻
+                        <h3>Build something</h3>
+                        <p>Create a website or application.</p>
+                    </button>
+
+                    <button class="card" data-prompt="Teach me something about coding.">
+                        📚
+                        <h3>Learn something</h3>
+                        <p>Learn programming with simple explanations.</p>
+                    </button>
+
+                    <button class="card" data-prompt="Give me a cool coding project idea.">
+                        💡
+                        <h3>Get an idea</h3>
+                        <p>Discover your next project.</p>
+                    </button>
+
+                </div>
+            </div>
+
+            <div id="messages" class="messages"></div>
+
+        </section>
+
+        <section class="chat-area">
+
+            <div class="tools">
+                <button id="chatMode" class="active">✦ Ask Junior AI</button>
+                <button id="fixMode">⌘ Fix Code</button>
+            </div>
+
+            <div class="input-box">
+
+                <textarea
+                    id="messageInput"
+                    placeholder="Message Junior AI..."
+                    rows="2"
+                ></textarea>
+
+                <div class="input-bottom">
+                    <span id="hint">
+                        Enter to send · Shift + Enter for a new line
+                    </span>
+
+                    <button id="sendBtn">➤</button>
+                </div>
+
+            </div>
+
+            <p class="disclaimer">
+                Junior AI can make mistakes. Check important information
+                and test generated code.
+            </p>
+
+        </section>
+
+    </main>
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
