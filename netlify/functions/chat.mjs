@@ -1,265 +1,77 @@
-const input = document.getElementById("messageInput");
-const messages = document.getElementById("messages");
-const welcome = document.getElementById("welcome");
+export default async (request) => {
+  if (request.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }),
+      {
+        status: 405,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+  }
 
-let mode = "chat";
-let busy = false;
-let chats = JSON.parse(localStorage.getItem("juniorAIChats") || "[]");
-let activeId = null;
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
 
-function saveChats() {
-    localStorage.setItem("juniorAIChats", JSON.stringify(chats));
-    renderChats();
-}
-
-function currentChat() {
-    return chats.find(chat => chat.id === activeId);
-}
-
-function newChat() {
-    activeId = Date.now().toString();
-
-    chats.unshift({
-        id: activeId,
-        title: "New conversation",
-        items: []
-    });
-
-    saveChats();
-    showMessages();
-    input.focus();
-}
-
-function home() {
-    activeId = null;
-    messages.innerHTML = "";
-    messages.classList.remove("visible");
-    welcome.style.display = "block";
-    input.value = "";
-    renderChats();
-}
-
-function showMessages() {
-    welcome.style.display = "none";
-    messages.classList.add("visible");
-    messages.innerHTML = "";
-
-    const chat = currentChat();
-
-    if (chat) {
-        chat.items.forEach(message => {
-            addMessage(message.role, message.content, false);
-        });
-    }
-}
-
-function renderChats() {
-    const list = document.getElementById("chatList");
-    list.innerHTML = "";
-
-    chats.slice(0, 30).forEach(chat => {
-        const button = document.createElement("button");
-
-        button.className = "chat-item";
-        button.textContent = "✧ " + chat.title;
-
-        if (chat.id === activeId) {
-            button.classList.add("active");
-        }
-
-        button.onclick = () => {
-            activeId = chat.id;
-            showMessages();
-            renderChats();
-        };
-
-        list.appendChild(button);
-    });
-}
-
-function addMessage(role, content, scroll = true) {
-    const row = document.createElement("div");
-
-    row.className = "message " +
-        (role === "user" ? "user" : "assistant");
-
-    if (role !== "user") {
-        const avatar = document.createElement("div");
-        avatar.className = "avatar";
-        avatar.textContent = "J";
-        row.appendChild(avatar);
+    if (!apiKey) {
+      throw new Error("OPENAI_API_KEY is missing from Netlify.");
     }
 
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
+    const body = await request.json();
+    const message = body.message || "";
+    const mode = body.mode || "chat";
 
-    const parts = String(content).split(/```([\s\S]*?)```/g);
-
-    parts.forEach((part, index) => {
-        if (index % 2 === 1) {
-            const pre = document.createElement("pre");
-            const code = document.createElement("code");
-
-            code.textContent = part.replace(/^\w+\n/, "");
-
-            pre.appendChild(code);
-            bubble.appendChild(pre);
-        } else {
-            bubble.appendChild(
-                document.createTextNode(part)
-            );
-        }
-    });
-
-    row.appendChild(bubble);
-    messages.appendChild(row);
-
-    if (scroll) {
-        row.scrollIntoView({
-            behavior: "smooth",
-            block: "end"
-        });
-    }
-}
-
-function setMode(newMode) {
-    mode = newMode;
-
-    document.getElementById("chatMode")
-        .classList.toggle("active", mode === "chat");
-
-    document.getElementById("fixMode")
-        .classList.toggle("active", mode === "fix");
-
-    if (mode === "fix") {
-        input.placeholder =
-            "Paste your code here and let Junior AI fix it...";
-    } else {
-        input.placeholder = "Message Junior AI...";
-    }
-}
-
-async function sendMessage() {
-    const text = input.value.trim();
-
-    if (!text || busy) return;
-
-    if (!activeId) {
-        newChat();
+    if (!message.trim()) {
+      throw new Error("Please enter a message.");
     }
 
-    const chat = currentChat();
+    const instructions =
+      mode === "fix"
+        ? "You are Junior AI, an expert coding assistant. Find bugs in the user's code and return corrected, working code. Explain the important fixes."
+        : "You are Junior AI, a helpful, friendly AI assistant. Answer clearly and help with coding and general questions.";
 
-    chat.items.push({
-        role: "user",
-        content: text
-    });
+    const response = await fetch(
+      "https://api.openai.com/v1/responses",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+          instructions,
+          input: message
+        })
+      }
+    );
 
-    if (chat.items.length === 1) {
-        chat.title = text.slice(0, 30);
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error?.message || "OpenAI request failed."
+      );
     }
 
-    addMessage("user", text);
+    const reply =
+      result.output_text ||
+      "Sorry, I couldn't generate a response.";
 
-    input.value = "";
-    saveChats();
+    return new Response(
+      JSON.stringify({ reply }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
 
-    busy = true;
-    document.getElementById("sendBtn").disabled = true;
-
-    const typing = document.createElement("div");
-
-    typing.className = "message assistant";
-    typing.innerHTML = `
-        <div class="avatar">J</div>
-        <div class="bubble">Junior AI is thinking...</div>
-    `;
-
-    messages.appendChild(typing);
-
-    try {
-        const response = await fetch(
-            "/.netlify/functions/chat",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    messages: chat.items.slice(-12),
-                    mode: mode
-                })
-            }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "AI request failed.");
-        }
-
-        const answer = data.reply;
-
-        typing.remove();
-
-        chat.items.push({
-            role: "assistant",
-            content: answer
-        });
-
-        addMessage("assistant", answer);
-        saveChats();
-
-    } catch (error) {
-        typing.remove();
-
-        addMessage(
-            "assistant",
-            "Sorry! Junior AI couldn't connect.\n\n" +
-            error.message +
-            "\n\nCheck your Netlify API key and deployment."
-        );
-
-    } finally {
-        busy = false;
-        document.getElementById("sendBtn").disabled = false;
-        input.focus();
-    }
-}
-
-// BUTTONS
-
-document.getElementById("sendBtn").onclick = sendMessage;
-
-document.getElementById("newChatBtn").onclick = newChat;
-
-document.getElementById("homeBtn").onclick = home;
-
-document.getElementById("chatMode").onclick = () => {
-    setMode("chat");
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+  }
 };
-
-document.getElementById("fixMode").onclick = () => {
-    setMode("fix");
-};
-
-input.addEventListener("keydown", event => {
-    if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        sendMessage();
-    }
-});
-
-// HOME SCREEN CARDS
-
-document.querySelectorAll(".card").forEach(card => {
-    card.onclick = () => {
-        setMode("chat");
-        input.value = card.dataset.prompt;
-        sendMessage();
-    };
-});
-
-renderChats();
